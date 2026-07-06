@@ -1,136 +1,180 @@
-# Posture Detection System
+# Align Posture
 
-A real-time posture monitoring application that uses computer vision to detect slouching and provide visual and audio feedback to help improve sitting posture.
+**[alignposture.online](https://alignposture.online)** is a privacy-first,
+full-stack posture coach. It learns a user's neutral
+sitting position, analyzes webcam frames with MediaPipe, offers gentle real-time
+feedback, and turns sessions into useful progress trends.
 
-## Overview
+![React](https://img.shields.io/badge/React-TypeScript-2f6953)
+![FastAPI](https://img.shields.io/badge/FastAPI-Python-2f6953)
+![Tests](https://img.shields.io/badge/tests-13%20passing-2f6953)
 
-This project was developed as a high school grade 12 computer science project to address poor posture habits during long computer usage sessions. The system uses your webcam to monitor your posture in real-time and provides escalating warnings when slouching is detected.
+> Align Posture is a wellness aid, not a medical device. Camera images are processed
+> inside the browser and never transmitted or saved. Only normalized body ratios,
+> timestamps, and posture scores reach the local API.
 
-## Features
+## Product experience
 
-- **Real-time pose detection** using MediaPipe
-- **Visual feedback system** with color-coded borders:
-  - 🟢 Green: Good posture
-  - 🟡 Yellow: Slouching detected for 1+ minute
-  - 🔴 Red: Slouching detected for 2+ minutes (with audio warning)
-- **Audio alerts** when prolonged slouching is detected
-- **Data logging** to CSV for tracking posture over time
-- **Live visualization** with matplotlib showing posture metrics
-- **Body landmark heatmap** overlay for visual feedback
+1. **Welcome:** a clear explanation of value, privacy, and secure account access.
+2. **Camera setup:** permission guidance and an on-screen positioning frame.
+3. **Calibration:** six seconds of neutral posture creates a personal baseline.
+4. **Live coach:** a low-distraction score, posture state, and one useful cue.
+5. **Progress:** session summaries and posture-score trends over time.
 
-## Technologies Used
+The interface is responsive, keyboard accessible, reduced-motion aware, and
+designed to avoid framing posture as a pass/fail test.
 
-- **Python** - Main application logic
-- **C++** - Distance calculation and slouch detection functions (compiled to shared library)
-- **OpenCV** - Image processing and display
-- **MediaPipe** - Pose estimation and landmark detection
-- **SFML** - Audio handling (C++)
-- **Pygame** - Audio playback (Python)
-- **Pandas & Matplotlib** - Data analysis and visualization
+## Architecture
 
-## Requirements
-
-### Python Dependencies
+```mermaid
+flowchart LR
+    Camera["Browser camera"] --> React["React + TypeScript"]
+    React --> Vision["MediaPipe Tasks / WebAssembly"]
+    Vision --> Metrics["Body-relative metrics"]
+    Metrics -->|"Ratios only / 350 ms"| API["FastAPI"]
+    API --> Core["Calibrated analyzer"]
+    Profile[("Calibration profile")] --> Core
+    Core --> React
+    Core --> SQLite[("SQLite events")]
+    SQLite --> Analytics["History API"]
+    Analytics --> React
 ```
-opencv-python
-mediapipe
-numpy
-pygame
-pandas
-matplotlib
-```
 
-### C++ Dependencies
-- OpenCV
-- SFML Audio
+The scoring core is independent of HTTP, MediaPipe, and storage. Body
+measurements are normalized by shoulder width; the median of 60 visible frames
+forms the baseline. Changing user, chair, desk, or camera position calls for a
+quick recalibration—not a hard-coded threshold.
 
-### System Requirements
-- Webcam
-- Linux/Unix system (for `.so` shared library)
+## Technology
 
-## Installation
+- React 18, TypeScript, Vite, Clerk, Recharts, and Lucide
+- FastAPI, Pydantic, and SQLite
+- Clerk's official Python SDK for session-token verification
+- MediaPipe Tasks Vision running privately in browser WebAssembly
+- Pytest, Vitest, Testing Library, GitHub Actions, and Docker
 
-1. Clone the repository:
+## Run locally
+
+Python 3.10–3.12 and Node.js 20+ are supported.
+
 ```bash
-git clone https://github.com/yourusername/posture-detection.git
-cd posture-detection
+git clone https://github.com/nilaycarleton/Posture_Detection_System.git
+cd Posture_Detection_System
+
+python -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+python -m pip install -r requirements-dev.txt
+
+cd frontend
+npm install
+cd ..
+
+clerk auth login
+clerk env pull --app app_3G67JeLvY73D9tqJrrt2ZwijneW --file .env.local
+clerk env pull --app app_3G67JeLvY73D9tqJrrt2ZwijneW --file frontend/.env.local
 ```
 
-2. Install Python dependencies:
+Start the API and web app together from the repository root:
+
 ```bash
-pip install opencv-python mediapipe numpy pygame pandas matplotlib
+make dev
 ```
 
-3. Compile the C++ shared library:
+Keep that terminal open while using the application. You can alternatively run
+`make api` and `make web` in two terminals. Make targets must be run from the
+repository root; from inside `frontend`, use `npm run dev`. If your shell says
+`python` is not found while creating the environment, use
+`python3 -m venv .venv`.
+
+Open [http://localhost:5173](http://localhost:5173), create an account, and
+complete calibration. FastAPI documentation is
+available at [http://localhost:8000/docs](http://localhost:8000/docs).
+
+The Pose Landmarker model and WebAssembly runtime are served as local frontend
+assets. `npm install` copies them into `frontend/public/`; those generated copies
+are ignored by Git. The backend intentionally has no OpenCV, native MediaPipe,
+GPU, or Metal dependency.
+
+### Docker
+
 ```bash
-g++ -shared -o libdistance.so -fPIC distance.cpp -lsfml-audio `pkg-config --cflags --libs opencv4`
+docker compose --env-file .env.local up --build
 ```
 
-4. Add a warning sound file named `warning.wav` to the project directory
+Then open [http://localhost:8000](http://localhost:8000). The SQLite database is
+stored in a persistent Docker volume.
 
-## Usage
+## API surface
 
-Run the main Python script:
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/api/health` | Public service readiness |
+| `GET` | `/api/status` | Signed-in user's calibration status |
+| `POST` | `/api/calibrations` | Begin a personal calibration |
+| `POST` | `/api/metrics` | Calibrate or analyze normalized body ratios |
+| `POST` | `/api/calibrations/{id}/complete` | Save the calibrated profile |
+| `POST` | `/api/sessions` | Start a coaching session |
+| `POST` | `/api/sessions/{id}/complete` | End a session |
+| `GET` | `/api/history` | Read scores and aggregate progress |
+
+## Test and build
+
 ```bash
-python main.py
+source .venv/bin/activate
+python -m pytest
+
+cd frontend
+npm test
+npm run build
 ```
 
-The application will:
-1. Open your webcam
-2. Display a window with your pose landmarks
-3. Monitor your posture continuously
-4. Show real-time distance metrics
-5. Display color-coded border warnings
-6. Log data to `posture_data.csv`
-7. Update a live plot of your posture over time
+GitHub Actions repeats backend tests on Python 3.10–3.12 and runs the frontend
+test/build pipeline on Node.js 22.
 
-Press `ESC` to exit the application.
+## Performance evidence
 
-## How It Works
+The original prototype appended a CSV row, loaded the complete growing file,
+and redrew a Matplotlib chart on every frame. The new backend records an event
+directly in SQLite and retrieves history only when requested.
 
-1. **Pose Detection**: MediaPipe identifies body landmarks including shoulders, hips, and elbows
-2. **Distance Calculation**: The C++ library calculates the 3D distance between key body points
-3. **Slouch Detection**: Compares calculated distances against a threshold to determine if you're slouching
-4. **Warning System**: 
-   - No slouching: Green border
-   - 1 minute of slouching: Yellow border
-   - 2 minutes of slouching: Red border + audio alert + text reminders
-5. **Data Logging**: Timestamps and posture metrics are saved for later analysis
+The retained legacy-vs-buffered microbenchmark is reproducible:
 
-## Project Structure
-
-```
-.
-├── main.py                 # Main Python application
-├── distance.cpp           # C++ distance calculation functions
-├── main.cpp              # C++ standalone implementation
-├── libdistance.so        # Compiled shared library
-├── warning.wav           # Warning sound file
-├── posture_data.csv      # Generated log file
-└── README.md            # This file
+```bash
+make benchmark
+cat benchmark/results/latest.json
 ```
 
-## Customization
+The checked-in run measured a **47.62× history-pipeline speedup**. This result
+does not claim MediaPipe or webcam FPS. The old “2.5 → 20 FPS” claim remains
+unverified until both revisions are tested against the same recorded video with
+documented hardware, resolution, warm-up, and repeated trials.
 
-You can adjust the slouch detection threshold in `main.py`:
-```python
-threshold = 0.50  # Increase for more lenient detection, decrease for stricter
+## Repository map
+
+```text
+frontend/                 React user experience
+  src/components/         Camera, navigation, and analytics UI
+  src/hooks/              Browser camera lifecycle
+backend/
+  auth.py                 Clerk token verification and origin allowlist
+  main.py                 FastAPI routes and application state
+  database.py             SQLite persistence and analytics
+posture_detection/
+  core.py                 Calibration and posture scoring
+benchmark/                Reproducible pipeline benchmark
+tests/                    Backend and core tests
 ```
 
-Timing for warnings can be modified:
-- Yellow warning: Change `60` seconds on line checking `current_time - start_time > 60`
-- Red warning: Change `120` seconds on line checking `current_time - start_time > 120`
+## Current limitations
 
-## Contributors
+- Production deployment still needs the custom Clerk domain configured for
+  `alignposture.online`.
+- An RGB webcam cannot measure spinal position with clinical accuracy.
+- Low light, occlusion, loose clothing, and extreme angles reduce confidence.
+- The fixed-video end-to-end benchmark and real-user validation study remain
+  planned work.
+- A truthful demo GIF still requires a consented webcam recording.
 
-This project was developed by three Grade 12 high school students as a computer science project.
-
-## License
-
-This project is open source and available under the MIT License.
-
-## Acknowledgments
-
-- MediaPipe team for the pose detection library
-- OpenCV community for computer vision tools
-- Our teachers and peers for feedback and support
+The original `main.py`, `main.cpp`, and `distance.cpp` are retained as a visible
+record of the system's evolution from a Grade 12 prototype to a full-stack
+machine-learning product.

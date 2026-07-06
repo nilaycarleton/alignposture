@@ -1,0 +1,16 @@
+services:
+  posture-coach:
+    build:
+      context: .
+      args:
+        CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY}
+    env_file:
+      - .env.local
+    ports:
+      - "8000:8000"
+    volumes:
+      - posture-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  posture-data:

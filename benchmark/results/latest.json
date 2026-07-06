@@ -1,0 +1,12 @@
+{
+  "scope": "CSV logging and history-update pipeline; excludes pose inference",
+  "system": {
+    "platform": "macOS-26.5.1-arm64-arm-64bit",
+    "processor": "arm",
+    "python": "3.12.13"
+  },
+  "frames": 2000,
+  "legacy_fps": 4353.15,
+  "buffered_fps": 207304.91,
+  "speedup": 47.62
+}
