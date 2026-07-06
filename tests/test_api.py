@@ -1,7 +1,9 @@
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
 from backend.auth import require_user
-from backend.main import create_app
+from backend.main import create_app, default_database_path
 
 
 def client(tmp_path):
@@ -16,6 +18,18 @@ def test_health_reports_uncalibrated(tmp_path):
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
     assert api.get("/api/status").json()["profile_ready"] is False
+
+
+def test_vercel_uses_writable_temporary_database(monkeypatch):
+    monkeypatch.setenv("VERCEL", "1")
+    monkeypatch.delenv("POSTURE_DATABASE_PATH", raising=False)
+    assert default_database_path() == Path("/tmp/posture.db")
+
+
+def test_database_path_can_be_configured(monkeypatch, tmp_path):
+    configured = tmp_path / "configured.db"
+    monkeypatch.setenv("POSTURE_DATABASE_PATH", str(configured))
+    assert default_database_path() == configured
 
 
 def test_calibration_explains_rejected_low_visibility_frame(tmp_path):

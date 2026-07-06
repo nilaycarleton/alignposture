@@ -7,7 +7,7 @@ feedback, and turns sessions into useful progress trends.
 
 ![React](https://img.shields.io/badge/React-TypeScript-2f6953)
 ![FastAPI](https://img.shields.io/badge/FastAPI-Python-2f6953)
-![Tests](https://img.shields.io/badge/tests-13%20passing-2f6953)
+![Tests](https://img.shields.io/badge/tests-15%20passing-2f6953)
 
 > Align Posture is a wellness aid, not a medical device. Camera images are processed
 > inside the browser and never transmitted or saved. Only normalized body ratios,

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from collections import defaultdict, deque
 from pathlib import Path
 from uuid import uuid4
@@ -18,7 +19,16 @@ from .auth import require_user
 from .schemas import CalibrationStart, MetricsRequest
 
 
-def create_app(database_path: str | Path = "data/posture.db") -> FastAPI:
+def default_database_path() -> Path:
+    configured_path = os.getenv("POSTURE_DATABASE_PATH")
+    if configured_path:
+        return Path(configured_path)
+    if os.getenv("VERCEL"):
+        return Path("/tmp/posture.db")
+    return Path("data/posture.db")
+
+
+def create_app(database_path: str | Path | None = None) -> FastAPI:
     app = FastAPI(
         title="Posture Coach API",
         version="3.0.0",
@@ -36,7 +46,7 @@ def create_app(database_path: str | Path = "data/posture.db") -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    app.state.database = Database(database_path)
+    app.state.database = Database(database_path or default_database_path())
     app.state.calibrations = defaultdict(lambda: deque(maxlen=90))
     app.state.calibration_settings = {}
 
