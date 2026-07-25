@@ -74,6 +74,23 @@ clerk env pull --app app_3G67JeLvY73D9tqJrrt2ZwijneW --file .env.local
 clerk env pull --app app_3G67JeLvY73D9tqJrrt2ZwijneW --file frontend/.env.local
 ```
 
+### GitHub sign-in
+
+The app uses Clerk's hosted authentication modals through `@clerk/react`.
+GitHub appears as a sign-in and sign-up option automatically after it is enabled
+as a Clerk SSO connection for the same Clerk app used by the local environment
+files.
+
+For development, open the Clerk Dashboard, go to **SSO connections**, add a
+connection **For all users**, and choose **GitHub**. Clerk's shared development
+OAuth credentials are enough for local testing.
+
+For production, enable **GitHub** in **SSO connections**, turn on **Use custom
+credentials**, copy Clerk's **Authorization Callback URL**, and register a
+GitHub OAuth app with that callback URL. Paste the GitHub **Client ID** and
+**Client Secret** back into the Clerk connection before testing the Account
+Portal sign-in URL.
+
 Start the API and web app together from the repository root:
 
 ```bash
