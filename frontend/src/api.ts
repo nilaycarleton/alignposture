@@ -36,6 +36,13 @@ export interface HistoryData {
   };
 }
 
+export interface CalibrationComplete {
+  id: string;
+  name: string;
+  created_at: string | null;
+  guest?: boolean;
+}
+
 type TokenProvider = () => Promise<string | null>;
 let tokenProvider: TokenProvider | null = null;
 
@@ -71,13 +78,19 @@ export const api = {
     metrics: PostureMetrics,
     calibration_id?: string,
     session_id?: string,
+    profile_id?: string,
   ) =>
     request<FrameResult>("/api/metrics", {
       method: "POST",
-      body: JSON.stringify({ ...metrics, calibration_id, session_id }),
+      body: JSON.stringify({ ...metrics, calibration_id, session_id, profile_id }),
     }),
   completeCalibration: (id: string) =>
-    request(`/api/calibrations/${id}/complete`, { method: "POST" }),
+    request<CalibrationComplete>(`/api/calibrations/${id}/complete`, { method: "POST" }),
+  claimGuestProfile: (id: string) =>
+    request<{ id: string; name: string; created_at: string }>(
+      `/api/guest-profiles/${id}/claim`,
+      { method: "POST" },
+    ),
   startSession: () =>
     request<{ id: string; started_at: string }>("/api/sessions", { method: "POST" }),
   completeSession: (id: string) =>

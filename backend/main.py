@@ -15,7 +15,7 @@ from posture_detection.core import CalibrationProfile, PostureAnalyzer
 from posture_detection.core import PostureMetrics
 
 from .database import Database
-from .auth import require_user
+from .auth import optional_user, require_user
 from .schemas import CalibrationStart, MetricsRequest
 
 
@@ -49,6 +49,7 @@ def create_app(database_path: str | Path | None = None) -> FastAPI:
     app.state.database = Database(database_path or default_database_path())
     app.state.calibrations = defaultdict(lambda: deque(maxlen=90))
     app.state.calibration_settings = {}
+    app.state.guest_profiles = {}
 
     @app.get("/api/health")
     def health():
@@ -62,7 +63,7 @@ def create_app(database_path: str | Path | None = None) -> FastAPI:
 
     @app.post("/api/calibrations")
     def start_calibration(
-        settings: CalibrationStart, user_id: str = Depends(require_user)
+        settings: CalibrationStart, user_id: str | None = Depends(optional_user)
     ):
         calibration_id = str(uuid4())
         app.state.calibration_settings[calibration_id] = {
@@ -73,7 +74,7 @@ def create_app(database_path: str | Path | None = None) -> FastAPI:
 
     @app.post("/api/metrics")
     def analyze_metrics(
-        request: MetricsRequest, user_id: str = Depends(require_user)
+        request: MetricsRequest, user_id: str | None = Depends(optional_user)
     ):
         metrics = PostureMetrics(
             head_forward=request.head_forward,
@@ -103,11 +104,16 @@ def create_app(database_path: str | Path | None = None) -> FastAPI:
                 ),
             }
 
-        profile = app.state.database.active_profile(user_id)
+        if user_id:
+            profile = app.state.database.active_profile(user_id)
+        elif request.profile_id:
+            profile = app.state.guest_profiles.get(request.profile_id)
+        else:
+            profile = None
         if profile is None:
             raise HTTPException(status_code=409, detail="Complete calibration first.")
         result = PostureAnalyzer(profile).analyze(metrics)
-        if request.session_id and result.state != "no_pose":
+        if user_id and request.session_id and result.state != "no_pose":
             app.state.database.add_event(
                 user_id,
                 request.session_id,
@@ -119,7 +125,7 @@ def create_app(database_path: str | Path | None = None) -> FastAPI:
 
     @app.post("/api/calibrations/{calibration_id}/complete")
     def complete_calibration(
-        calibration_id: str, user_id: str = Depends(require_user)
+        calibration_id: str, user_id: str | None = Depends(optional_user)
     ):
         calibration = app.state.calibration_settings.get(calibration_id)
         samples = app.state.calibrations.get(calibration_id, [])
@@ -131,9 +137,22 @@ def create_app(database_path: str | Path | None = None) -> FastAPI:
             )
         settings = calibration["settings"]
         profile = CalibrationProfile.from_samples(samples, settings.sensitivity)
-        saved = app.state.database.save_profile(user_id, profile, settings.name)
         app.state.calibrations.pop(calibration_id, None)
         app.state.calibration_settings.pop(calibration_id, None)
+        if user_id:
+            saved = app.state.database.save_profile(user_id, profile, settings.name)
+            return {**saved, "guest": False}
+        profile_id = f"guest_{uuid4()}"
+        app.state.guest_profiles[profile_id] = profile
+        return {"id": profile_id, "name": settings.name, "created_at": None, "guest": True}
+
+    @app.post("/api/guest-profiles/{profile_id}/claim")
+    def claim_guest_profile(profile_id: str, user_id: str = Depends(require_user)):
+        profile = app.state.guest_profiles.get(profile_id)
+        if profile is None:
+            raise HTTPException(status_code=404, detail="Guest profile not found.")
+        saved = app.state.database.save_profile(user_id, profile, "My desk")
+        app.state.guest_profiles.pop(profile_id, None)
         return saved
 
     @app.post("/api/sessions")

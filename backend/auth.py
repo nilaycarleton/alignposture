@@ -37,3 +37,14 @@ def require_user(request: Request) -> str:
         raise HTTPException(status_code=401, detail="Authentication required.")
     return str(user_id)
 
+
+def optional_user(request: Request) -> str | None:
+    authorization = request.headers.get("authorization")
+    if not authorization:
+        return None
+    try:
+        return require_user(request)
+    except HTTPException as exc:
+        if exc.status_code in {401, 503}:
+            return None
+        raise

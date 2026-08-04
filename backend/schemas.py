@@ -8,6 +8,7 @@ class MetricsRequest(BaseModel):
     visibility: float = Field(ge=0, le=1)
     calibration_id: str | None = None
     session_id: str | None = None
+    profile_id: str | None = None
 
 
 class CalibrationStart(BaseModel):

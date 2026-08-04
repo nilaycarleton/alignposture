@@ -7,7 +7,7 @@ feedback, and turns sessions into useful progress trends.
 
 ![React](https://img.shields.io/badge/React-TypeScript-2f6953)
 ![FastAPI](https://img.shields.io/badge/FastAPI-Python-2f6953)
-![Tests](https://img.shields.io/badge/tests-15%20passing-2f6953)
+![Tests](https://img.shields.io/badge/tests-14%20passing-087f8c)
 
 > Align Posture is a wellness aid, not a medical device. Camera images are processed
 > inside the browser and never transmitted or saved. Only normalized body ratios,
@@ -15,11 +15,12 @@ feedback, and turns sessions into useful progress trends.
 
 ## Product experience
 
-1. **Welcome:** a clear explanation of value, privacy, and secure account access.
+1. **Welcome:** a clear path to try coaching without an account.
 2. **Camera setup:** permission guidance and an on-screen positioning frame.
 3. **Calibration:** six seconds of neutral posture creates a personal baseline.
-4. **Live coach:** a low-distraction score, posture state, and one useful cue.
-5. **Progress:** session summaries and posture-score trends over time.
+4. **Live coach:** guest or signed-in coaching with a low-distraction score.
+5. **Progress:** signed-in session summaries and posture-score trends over time.
+6. **Legal:** privacy, terms, cookies, contact, and wellness-disclaimer pages.
 
 The interface is responsive, keyboard accessible, reduced-motion aware, and
 designed to avoid framing posture as a pass/fail test.
@@ -103,8 +104,9 @@ repository root; from inside `frontend`, use `npm run dev`. If your shell says
 `python` is not found while creating the environment, use
 `python3 -m venv .venv`.
 
-Open [http://localhost:5173](http://localhost:5173), create an account, and
-complete calibration. FastAPI documentation is
+Open [http://localhost:5173](http://localhost:5173), start a guest coaching
+session, and create an account only when you want to save posture history.
+FastAPI documentation is
 available at [http://localhost:8000/docs](http://localhost:8000/docs).
 
 The Pose Landmarker model and WebAssembly runtime are served as local frontend
@@ -127,9 +129,10 @@ stored in a persistent Docker volume.
 |---|---|---|
 | `GET` | `/api/health` | Public service readiness |
 | `GET` | `/api/status` | Signed-in user's calibration status |
-| `POST` | `/api/calibrations` | Begin a personal calibration |
+| `POST` | `/api/calibrations` | Begin guest or signed-in calibration |
 | `POST` | `/api/metrics` | Calibrate or analyze normalized body ratios |
-| `POST` | `/api/calibrations/{id}/complete` | Save the calibrated profile |
+| `POST` | `/api/calibrations/{id}/complete` | Save a signed-in profile or create a temporary guest profile |
+| `POST` | `/api/guest-profiles/{id}/claim` | Attach a temporary guest profile to a signed-in account |
 | `POST` | `/api/sessions` | Start a coaching session |
 | `POST` | `/api/sessions/{id}/complete` | End a session |
 | `GET` | `/api/history` | Read scores and aggregate progress |

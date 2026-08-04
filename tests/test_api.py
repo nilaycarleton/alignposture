@@ -2,13 +2,14 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from backend.auth import require_user
+from backend.auth import optional_user, require_user
 from backend.main import create_app, default_database_path
 
 
 def client(tmp_path):
     app = create_app(tmp_path / "test.db")
     app.dependency_overrides[require_user] = lambda: "user_test"
+    app.dependency_overrides[optional_user] = lambda: "user_test"
     return TestClient(app)
 
 
@@ -90,6 +91,7 @@ def test_history_is_isolated_between_clerk_users(tmp_path):
     app = create_app(tmp_path / "isolated.db")
     current_user = {"id": "user_one"}
     app.dependency_overrides[require_user] = lambda: current_user["id"]
+    app.dependency_overrides[optional_user] = lambda: current_user["id"]
     api = TestClient(app)
 
     calibration = api.post("/api/calibrations", json={"name": "Desk"}).json()
@@ -108,3 +110,59 @@ def test_history_is_isolated_between_clerk_users(tmp_path):
     current_user["id"] = "user_two"
     assert api.get("/api/status").json()["profile_ready"] is False
     assert api.get("/api/history").json()["summary"]["sessions"] == 0
+
+
+def test_guest_can_calibrate_and_analyze_without_saved_history(tmp_path):
+    api = TestClient(create_app(tmp_path / "guest.db"))
+    calibration = api.post("/api/calibrations", json={"name": "Guest desk"}).json()
+    payload = {
+        "head_forward": 0.3,
+        "torso_length": 1.5,
+        "shoulder_tilt": 0.01,
+        "visibility": 0.95,
+        "calibration_id": calibration["id"],
+    }
+    for _ in range(60):
+        assert api.post("/api/metrics", json=payload).status_code == 200
+
+    completed = api.post(f"/api/calibrations/{calibration['id']}/complete").json()
+    assert completed["guest"] is True
+    assert completed["id"].startswith("guest_")
+
+    analyzed = api.post(
+        "/api/metrics",
+        json={
+            "head_forward": 0.3,
+            "torso_length": 1.5,
+            "shoulder_tilt": 0.01,
+            "visibility": 0.95,
+            "profile_id": completed["id"],
+            "session_id": "guest-session",
+        },
+    )
+    assert analyzed.status_code == 200
+    assert analyzed.json()["state"] == "good"
+    assert api.post("/api/sessions").status_code in {401, 503}
+    assert api.get("/api/history").status_code in {401, 503}
+
+
+def test_signed_in_user_can_claim_guest_profile(tmp_path):
+    app = create_app(tmp_path / "claim.db")
+    api = TestClient(app)
+    calibration = api.post("/api/calibrations", json={"name": "Guest desk"}).json()
+    payload = {
+        "head_forward": 0.3,
+        "torso_length": 1.5,
+        "shoulder_tilt": 0.01,
+        "visibility": 0.95,
+        "calibration_id": calibration["id"],
+    }
+    for _ in range(60):
+        api.post("/api/metrics", json=payload)
+    guest_profile = api.post(f"/api/calibrations/{calibration['id']}/complete").json()
+
+    app.dependency_overrides[require_user] = lambda: "user_claim"
+    app.dependency_overrides[optional_user] = lambda: "user_claim"
+    claimed = api.post(f"/api/guest-profiles/{guest_profile['id']}/claim")
+    assert claimed.status_code == 200
+    assert api.get("/api/status").json()["profile_ready"] is True
