@@ -105,11 +105,11 @@ button { color: inherit; }
 .brand-mark {
   width: 36px;
   height: 36px;
-  display: grid;
-  place-items: center;
-  color: #fffdf8;
+  display: block;
+  flex: 0 0 auto;
+  object-fit: cover;
   border-radius: var(--radius);
-  background: linear-gradient(135deg, var(--teal), var(--coral));
+  background: var(--teal-dark);
   box-shadow: 0 10px 24px rgba(8, 127, 140, .22);
 }
 
