@@ -14,6 +14,7 @@ import {
   Check,
   CircleHelp,
   FileText,
+  Github,
   Home,
   LockKeyhole,
   Mail,
@@ -635,6 +636,9 @@ function Footer({ onNavigate }: { onNavigate: (view: View) => void }) {
         <button onClick={() => onNavigate("cookies")}><FileText /> Cookies</button>
         <button onClick={() => onNavigate("disclaimer")}><ShieldCheck /> Disclaimer</button>
         <button onClick={() => onNavigate("contact")}><Mail /> Contact</button>
+        <a href="https://github.com/nilaycarleton/alignposture" target="_blank" rel="noreferrer">
+          <Github /> GitHub
+        </a>
       </nav>
     </footer>
   );
